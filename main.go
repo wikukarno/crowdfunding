@@ -20,12 +20,14 @@ func main()  {
 	userRepository := user.NewRepository(db)
 	userService := user.NewService(userRepository)
 	
+	
 	UserHandler := handler.NewUserHandler(userService)
 
 	router := gin.Default()
 	api := router.Group("/api/v1")
 
 	api.POST("/users", UserHandler.RegisterUser)
+	api.POST("/sessions", UserHandler.Login)
 
 	router.Run()
 
