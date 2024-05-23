@@ -2,9 +2,11 @@ package main
 
 import (
 	"backend-crowdfunding/auth"
+	"backend-crowdfunding/campaign"
 	"backend-crowdfunding/handler"
 	"backend-crowdfunding/helper"
 	"backend-crowdfunding/user"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -15,14 +17,31 @@ import (
 	"gorm.io/gorm"
 )
 func main()  {
-	dsn := "root:santri@tcp(127.0.0.1:3306)/go-crowdfunding?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:santri@tcp(127.0.0.1:3306)/go_backend_donasi?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
+	// migrasi schema
+	// db.AutoMigrate(&user.User{})
+	// db.AutoMigrate(&campaign.Campaign{})
+	// db.AutoMigrate(&campaign.CampaignImage{})
+
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+
+
 	userRepository := user.NewRepository(db)
+	campaignRepository := campaign.NewRepository(db)
+	campaigns, err := campaignRepository.FindByUserID(1)
+
+	for _, c := range campaigns {
+		fmt.Println(c.Name)
+	}
+
 	userService := user.NewService(userRepository)
 	authService := auth.NewService()
 
