@@ -16,7 +16,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
-func main()  {
+
+func main() {
 	dsn := "root:santri@tcp(127.0.0.1:3306)/go_backend_donasi?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
@@ -24,22 +25,13 @@ func main()  {
 		log.Fatal(err.Error())
 	}
 
-	// migrasi schema
-	// db.AutoMigrate(&user.User{})
-	// db.AutoMigrate(&campaign.Campaign{})
-	// db.AutoMigrate(&campaign.CampaignImage{})
-
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
-
-
 	userRepository := user.NewRepository(db)
 	campaignRepository := campaign.NewRepository(db)
 	campaigns, err := campaignRepository.FindByUserID(1)
 
 	for _, c := range campaigns {
 		fmt.Println(c.Name)
+		fmt.Println(c.CampaignImages[0].FileName)
 	}
 
 	userService := user.NewService(userRepository)
@@ -60,7 +52,7 @@ func main()  {
 }
 
 func authMiddleware(authService auth.Service, userService user.Service) gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
 		if !strings.Contains(authHeader, "Bearer") {
@@ -102,5 +94,3 @@ func authMiddleware(authService auth.Service, userService user.Service) gin.Hand
 		c.Set("currentUser", user)
 	}
 }
-
-
