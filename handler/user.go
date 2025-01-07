@@ -5,11 +5,11 @@ import (
 	"backend-crowdfunding/helper"
 	"backend-crowdfunding/user"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
-
 
 type userHandler struct {
 	userService user.Service
@@ -36,8 +36,8 @@ func (h *userHandler) RegisterUser(c *gin.Context) {
 	}
 
 	newUser, err := h.userService.RegisterUser(input)
-	
-	if err != nil{
+
+	if err != nil {
 		response := helper.APIResponse("Register account failed", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -54,48 +54,55 @@ func (h *userHandler) RegisterUser(c *gin.Context) {
 
 	response := helper.APIResponse("Account has been registered", http.StatusOK, "success", formatter)
 
-
 	c.JSON(http.StatusOK, response)
 }
 
 func (h *userHandler) Login(c *gin.Context) {
-	
+
 	var input user.LoginInput
+
+	// Log request body untuk debugging
+	log.Println("Request received")
 
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
 		errors := helper.FormatValidationError(err)
-
 		errorMessage := gin.H{"errors": errors}
-
 		response := helper.APIResponse("Login failed", http.StatusUnprocessableEntity, "error", errorMessage)
+		log.Println("Validation Error:", errors)
 		c.JSON(http.StatusUnprocessableEntity, response)
 		return
 	}
+
+	log.Println("Input after validation:", input)
 
 	loggedInUser, err := h.userService.Login(input)
-	
-	if err != nil{
+	if err != nil {
 		errorMessage := gin.H{"errors": err.Error()}
-
 		response := helper.APIResponse("Login failed", http.StatusUnprocessableEntity, "error", errorMessage)
+		log.Println("Service Login Error:", err)
 		c.JSON(http.StatusUnprocessableEntity, response)
 		return
 	}
+
+	log.Println("User found:", loggedInUser)
 
 	token, err := h.authService.GenerateToken(loggedInUser.ID)
 	if err != nil {
 		response := helper.APIResponse("Login failed", http.StatusBadRequest, "error", nil)
+		log.Println("Token Generation Error:", err)
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
+	log.Println("Token generated:", token)
+
 	formatter := user.FormatUser(loggedInUser, token)
 
-	response := helper.APIResponse("Successfuly loggedin", http.StatusOK, "success", formatter)
+	response := helper.APIResponse("Successfully logged in", http.StatusOK, "success", formatter)
+	log.Println("Response formatted:", response)
 
 	c.JSON(http.StatusOK, response)
-
 }
 
 func (h *userHandler) CheckEmailAvailability(c *gin.Context) {
@@ -114,7 +121,7 @@ func (h *userHandler) CheckEmailAvailability(c *gin.Context) {
 
 	isEmailAvailable, err := h.userService.IsEmailAvailable(input)
 
-	if err != nil{
+	if err != nil {
 		errorMessage := gin.H{"errors": "Server Error"}
 
 		response := helper.APIResponse("Email checking failed", http.StatusUnprocessableEntity, "error", errorMessage)
@@ -136,7 +143,7 @@ func (h *userHandler) CheckEmailAvailability(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func (h *userHandler) UploadAvatar(c *gin.Context){
+func (h *userHandler) UploadAvatar(c *gin.Context) {
 	file, err := c.FormFile("avatar")
 
 	if err != nil {
@@ -161,7 +168,6 @@ func (h *userHandler) UploadAvatar(c *gin.Context){
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-
 
 	_, err = h.userService.SaveAvatar(userID, path)
 

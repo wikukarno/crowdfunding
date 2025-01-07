@@ -6,7 +6,6 @@ import (
 	"backend-crowdfunding/handler"
 	"backend-crowdfunding/helper"
 	"backend-crowdfunding/user"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -31,9 +30,6 @@ func main() {
 	campaignService := campaign.NewService(campaignRepository)
 	authService := auth.NewService()
 
-	campaigns, err := campaignService.GetCampaigns(9)
-	fmt.Println(len(campaigns))
-
 	userHandler := handler.NewUserHandler(userService, authService)
 	campaignHandler := handler.NewCampaignHandler(campaignService)
 
@@ -48,6 +44,7 @@ func main() {
 
 	api.GET("/campaigns", campaignHandler.GetCampaigns)
 	api.GET("/campaigns/:id", campaignHandler.GetCampaign)
+	api.POST("/campaigns", authMiddleware(authService, userService), campaignHandler.CreateCampaign)
 
 	router.Run()
 
