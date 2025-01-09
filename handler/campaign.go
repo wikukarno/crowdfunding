@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type campaignHandler struct {
@@ -61,9 +62,6 @@ func (h *campaignHandler) GetCampaign(c *gin.Context) {
 func (h *campaignHandler) CreateCampaign(c *gin.Context) {
 	var input campaign.CreateCampaignInput
 
-	// Log awal menerima request
-	log.Println("Request received to create a campaign")
-
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
 		// Log error validasi input
@@ -76,15 +74,9 @@ func (h *campaignHandler) CreateCampaign(c *gin.Context) {
 		return
 	}
 
-	// Log input setelah validasi berhasil
-	log.Println("Input after validation:", input)
-
 	// Mendapatkan user dari context
 	currentUser := c.MustGet("currentUser").(user.User)
 	input.User = currentUser
-
-	// Log user yang sedang membuat campaign
-	log.Println("Current user:", currentUser)
 
 	// Membuat campaign
 	newCampaign, err := h.service.CreateCampaign(input)
@@ -163,12 +155,14 @@ func (h *campaignHandler) UploadCampaignImage(c *gin.Context) {
 		return
 	}
 
-	path := fmt.Sprintf("images/campaigns/%d", userID, file.Filename)
+	timestamp := time.Now().Unix()
+	path := fmt.Sprintf("images/campaigns/%d_%d_%s", userID, timestamp, file.Filename)
 
 	_, err = h.service.SaveCampaignImage(input, path)
+	fmt.Println(err)
 	if err != nil {
 		data := gin.H{"is_uploaded": false}
-		response := helper.APIResponse("Failed to upload campaign image", http.StatusBadRequest, "error", data)
+		response := helper.APIResponse("Failed to upload campaign imageeee", http.StatusBadRequest, "error", data)
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
