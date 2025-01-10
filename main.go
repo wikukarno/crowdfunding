@@ -8,6 +8,7 @@ import (
 	"backend-crowdfunding/payment"
 	"backend-crowdfunding/transaction"
 	"backend-crowdfunding/user"
+	"github.com/gin-contrib/cors"
 	"log"
 	"net/http"
 	"strings"
@@ -41,6 +42,7 @@ func main() {
 	transactionHandler := handler.NewTransactionHandler(transactionService)
 
 	router := gin.Default()
+	router.Use(cors.Default())
 	router.Static("/images", "./images")
 	api := router.Group("/api/v1")
 
