@@ -74,8 +74,6 @@ func (h *userHandler) Login(c *gin.Context) {
 		return
 	}
 
-	log.Println("Input after validation:", input)
-
 	loggedInUser, err := h.userService.Login(input)
 	if err != nil {
 		errorMessage := gin.H{"errors": err.Error()}
@@ -182,6 +180,16 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 	data := gin.H{"is_uploaded": true}
 
 	response := helper.APIResponse("Avatar successfuly uploaded", http.StatusOK, "success", data)
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *userHandler) FetchUser(c *gin.Context) {
+	currentUser := c.MustGet("currentUser").(user.User)
+
+	formatter := user.FormatUser(currentUser, "")
+
+	response := helper.APIResponse("Successfully fetch user data", http.StatusOK, "success", formatter)
 
 	c.JSON(http.StatusOK, response)
 }
