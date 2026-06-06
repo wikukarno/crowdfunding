@@ -1,112 +1,62 @@
 package main
 
 import (
-	"backend-crowdfunding/auth"
-	"backend-crowdfunding/campaign"
-	"backend-crowdfunding/handler"
-	"backend-crowdfunding/helper"
-	"backend-crowdfunding/payment"
-	"backend-crowdfunding/transaction"
-	"backend-crowdfunding/user"
-	"github.com/gin-contrib/cors"
-	"log"
+	"context"
+	"errors"
+	"log/slog"
 	"net/http"
-	"strings"
-
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
+// @title           Crowdfunding API
+// @version         1.0
+// @description     REST API for crowdfunding campaigns and donations.
+// @license.name    MIT
+// @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
+// @description     Type "Bearer" followed by a space and your JWT, e.g. "Bearer eyJhbGci..."
 func main() {
-	dsn := "root:santri@tcp(127.0.0.1:3306)/go_backend_donasi?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
+	app, err := InitializeApp()
 	if err != nil {
-		log.Fatal(err.Error())
+		logger.Error("failed to start application", "error", err)
+		os.Exit(1)
 	}
 
-	userRepository := user.NewRepository(db)
-	campaignRepository := campaign.NewRepository(db)
-	transactionRepository := transaction.NewRepository(db)
-
-	userService := user.NewService(userRepository)
-	campaignService := campaign.NewService(campaignRepository)
-	authService := auth.NewService()
-	paymentService := payment.NewService()
-	transactionService := transaction.NewService(transactionRepository, campaignRepository, paymentService)
-
-	userHandler := handler.NewUserHandler(userService, authService)
-	campaignHandler := handler.NewCampaignHandler(campaignService)
-	transactionHandler := handler.NewTransactionHandler(transactionService)
-
-	router := gin.Default()
-	router.Use(cors.Default())
-	router.Static("/images", "./images")
-	api := router.Group("/api/v1")
-
-	api.POST("/users", userHandler.RegisterUser)
-	api.POST("/sessions", userHandler.Login)
-	api.POST("/email_checkers", userHandler.CheckEmailAvailability)
-	api.POST("/avatars", authMiddleware(authService, userService), userHandler.UploadAvatar)
-	api.GET("/users/fetch", authMiddleware(authService, userService), userHandler.FetchUser)
-
-	api.GET("/campaigns", campaignHandler.GetCampaigns)
-	api.GET("/campaigns/:id", campaignHandler.GetCampaign)
-	api.POST("/campaigns", authMiddleware(authService, userService), campaignHandler.CreateCampaign)
-	api.PUT("/campaigns/:id", authMiddleware(authService, userService), campaignHandler.UpdateCampaign)
-	api.POST("/campaign-images", authMiddleware(authService, userService), campaignHandler.UploadCampaignImage)
-
-	api.GET("/campaigns/:id/transactions", authMiddleware(authService, userService), transactionHandler.GetCampaignTransactions)
-	api.GET("/transactions", authMiddleware(authService, userService), transactionHandler.GetUserTransactions)
-	api.POST("/transactions", authMiddleware(authService, userService), transactionHandler.CreateTransaction)
-	api.POST("/transactions/notification", transactionHandler.GetNotification)
-
-	router.Run()
-
-}
-
-func authMiddleware(authService auth.Service, userService user.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-
-		if !strings.Contains(authHeader, "Bearer") {
-			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
-			return
-		}
-
-		tokenString := ""
-		arrayToken := strings.Split(authHeader, " ")
-
-		if len(arrayToken) == 2 {
-			tokenString = arrayToken[1]
-		}
-
-		token, err := authService.ValidateToken(tokenString)
-		if err != nil {
-			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
-			return
-		}
-
-		claim, ok := token.Claims.(jwt.MapClaims)
-		if !ok || !token.Valid {
-			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
-			return
-		}
-
-		userID := int(claim["user_id"].(float64))
-
-		user, err := userService.GetUserByID(userID)
-		if err != nil {
-			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
-			return
-		}
-
-		c.Set("currentUser", user)
+	srv := &http.Server{
+		Addr:    ":" + app.Config.AppPort,
+		Handler: app.Router,
 	}
+
+	go func() {
+		logger.Info("server listening", "port", app.Config.AppPort)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("server stopped unexpectedly", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for an interrupt, then give in-flight requests a few seconds to drain.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("shutting down")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("graceful shutdown failed", "error", err)
+		os.Exit(1)
+	}
+
+	logger.Info("server stopped")
 }
