@@ -2,3 +2,16 @@
 images/
 .air.toml
 tmp/
+
+# Editor / IDE
+.idea/
+.vscode/
+
+# Build output
+/bin/
+backend-crowdfunding
+*.exe
+
+# Test artifacts
+coverage.out
+coverage.html
