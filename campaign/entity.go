@@ -6,8 +6,8 @@ import (
 )
 
 type Campaign struct {
-	ID               int
-	UserID           int
+	ID               string `gorm:"type:char(36);primaryKey"`
+	UserID           string `gorm:"type:char(36)"`
 	Name             string
 	ShortDescription string
 	Description      string
@@ -23,8 +23,8 @@ type Campaign struct {
 }
 
 type CampaignImage struct {
-	ID         int
-	CampaignID int
+	ID         string `gorm:"type:char(36);primaryKey"`
+	CampaignID string `gorm:"type:char(36)"`
 	FileName   string
 	IsPrimary  int
 	CreatedAt  time.Time

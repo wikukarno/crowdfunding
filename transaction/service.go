@@ -1,37 +1,41 @@
 package transaction
 
 import (
+	"errors"
+
 	"backend-crowdfunding/campaign"
 	"backend-crowdfunding/payment"
-	"errors"
-	"strconv"
+	"backend-crowdfunding/user"
+
+	"github.com/google/uuid"
 )
 
 type service struct {
 	repository         Repository
 	campaignRepository campaign.Repository
 	paymentService     payment.Service
+	txRunner           TxRunner
 }
 
 type Service interface {
-	GetTransactionByCampaignID(input GetCampaignTransactionsInput) ([]Transaction, error)
-	GetTransactionsByUserID(userID int) ([]Transaction, error)
-	CreateTransaction(input CreateTransactionInput) (Transaction, error)
+	GetTransactionByCampaignID(input GetCampaignTransactionsInput, userID string) ([]Transaction, error)
+	GetTransactionsByUserID(userID string) ([]Transaction, error)
+	CreateTransaction(input CreateTransactionInput, currentUser user.User) (Transaction, error)
 	ProcessPayment(input TransactionNotificationInput) error
 }
 
-func NewService(repository Repository, campaignRepository campaign.Repository, paymentService payment.Service) *service {
-	return &service{repository, campaignRepository, paymentService}
+func NewService(repository Repository, campaignRepository campaign.Repository, paymentService payment.Service, txRunner TxRunner) *service {
+	return &service{repository, campaignRepository, paymentService, txRunner}
 }
 
-func (s *service) GetTransactionByCampaignID(input GetCampaignTransactionsInput) ([]Transaction, error) {
+func (s *service) GetTransactionByCampaignID(input GetCampaignTransactionsInput, userID string) ([]Transaction, error) {
 
 	campaign, err := s.campaignRepository.FindByID(input.ID)
 	if err != nil {
 		return []Transaction{}, err
 	}
 
-	if campaign.UserID != input.User.ID {
+	if campaign.UserID != userID {
 		return []Transaction{}, errors.New("Not an owner of the campaign")
 	}
 
@@ -43,7 +47,7 @@ func (s *service) GetTransactionByCampaignID(input GetCampaignTransactionsInput)
 	return transactions, nil
 }
 
-func (s *service) GetTransactionsByUserID(userID int) ([]Transaction, error) {
+func (s *service) GetTransactionsByUserID(userID string) ([]Transaction, error) {
 	transactions, err := s.repository.GetByUserID(userID)
 	if err != nil {
 		return transactions, err
@@ -52,11 +56,12 @@ func (s *service) GetTransactionsByUserID(userID int) ([]Transaction, error) {
 	return transactions, nil
 }
 
-func (s *service) CreateTransaction(input CreateTransactionInput) (Transaction, error) {
+func (s *service) CreateTransaction(input CreateTransactionInput, currentUser user.User) (Transaction, error) {
 	transaction := Transaction{}
+	transaction.ID = uuid.NewString()
 	transaction.Amount = input.Amount
 	transaction.CampaignID = input.CampaignID
-	transaction.UserID = input.User.ID
+	transaction.UserID = currentUser.ID
 	transaction.Status = "pending"
 
 	newTransaction, err := s.repository.Save(transaction)
@@ -69,7 +74,7 @@ func (s *service) CreateTransaction(input CreateTransactionInput) (Transaction, 
 		Amount: newTransaction.Amount,
 	}
 
-	paymentURL, err := s.paymentService.GetPaymentURL(paymentTransaction, input.User)
+	paymentURL, err := s.paymentService.GetPaymentURL(paymentTransaction, currentUser)
 	if err != nil {
 		return newTransaction, err
 	}
@@ -85,40 +90,44 @@ func (s *service) CreateTransaction(input CreateTransactionInput) (Transaction, 
 }
 
 func (s *service) ProcessPayment(input TransactionNotificationInput) error {
-	transaction_id, _ := strconv.Atoi(input.OrderID)
+	transactionID := input.OrderID
 
-	transaction, err := s.repository.GetByID(transaction_id)
-	if err != nil {
-		return err
-	}
-
-	if (input.PaymentType == "credit_card") && (input.TransactionStatus == "capture" && input.FraudStatus == "accept") {
-		transaction.Status = "paid"
-	} else if input.TransactionStatus == "settlement" {
-		transaction.Status = "paid"
-	} else if input.TransactionStatus == "cancel" || input.TransactionStatus == "deny" || input.TransactionStatus == "expire" {
-		transaction.Status = "cancelled"
-	}
-
-	updatedTransaction, err := s.repository.Update(transaction)
-	if err != nil {
-		return err
-	}
-
-	campaign, err := s.campaignRepository.FindByID(updatedTransaction.CampaignID)
-	if err != nil {
-		return err
-	}
-
-	if updatedTransaction.Status == "paid" {
-		campaign.BackerCount += 1
-		campaign.CurrentAmount += updatedTransaction.Amount
-
-		_, err := s.campaignRepository.Update(campaign)
+	// Updating the transaction status and bumping the campaign totals must
+	// happen together, otherwise a crash between the two writes leaves a paid
+	// donation that never counted towards the campaign.
+	return s.txRunner.Run(func(txRepo Repository, campaignRepo campaign.Repository) error {
+		trx, err := txRepo.GetByID(transactionID)
 		if err != nil {
 			return err
 		}
-	}
 
-	return nil
+		switch {
+		case input.PaymentType == "credit_card" && input.TransactionStatus == "capture" && input.FraudStatus == "accept":
+			trx.Status = "paid"
+		case input.TransactionStatus == "settlement":
+			trx.Status = "paid"
+		case input.TransactionStatus == "cancel", input.TransactionStatus == "deny", input.TransactionStatus == "expire":
+			trx.Status = "cancelled"
+		}
+
+		updated, err := txRepo.Update(trx)
+		if err != nil {
+			return err
+		}
+
+		if updated.Status != "paid" {
+			return nil
+		}
+
+		camp, err := campaignRepo.FindByID(updated.CampaignID)
+		if err != nil {
+			return err
+		}
+
+		camp.BackerCount++
+		camp.CurrentAmount += updated.Amount
+
+		_, err = campaignRepo.Update(camp)
+		return err
+	})
 }

@@ -2,31 +2,30 @@ package payment
 
 import (
 	"backend-crowdfunding/user"
+
 	"github.com/veritrans/go-midtrans"
-	"os"
-	"strconv"
 )
 
 type service struct {
+	serverKey string
+	clientKey string
 }
 
 type Service interface {
 	GetPaymentURL(transaction Transaction, user user.User) (string, error)
 }
 
-func NewService() *service {
-	return &service{}
+func NewService(serverKey, clientKey string) *service {
+	return &service{serverKey: serverKey, clientKey: clientKey}
 }
 
 func (s *service) GetPaymentURL(transaction Transaction, user user.User) (string, error) {
 	midclient := midtrans.NewClient()
-	midclient.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY")
-	midclient.ClientKey = os.Getenv("MIDTRANS_CLIENT_KEY")
+	midclient.ServerKey = s.serverKey
+	midclient.ClientKey = s.clientKey
 	midclient.APIEnvType = midtrans.Sandbox
 
-	snapGateway := midtrans.SnapGateway{
-		Client: midclient,
-	}
+	snapGateway := midtrans.SnapGateway{Client: midclient}
 
 	snapReq := &midtrans.SnapReq{
 		CustomerDetail: &midtrans.CustDetail{
@@ -34,7 +33,7 @@ func (s *service) GetPaymentURL(transaction Transaction, user user.User) (string
 			FName: user.Name,
 		},
 		TransactionDetails: midtrans.TransactionDetails{
-			OrderID:  strconv.Itoa(transaction.ID),
+			OrderID:  transaction.ID,
 			GrossAmt: int64(transaction.Amount),
 		},
 	}

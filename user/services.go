@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -10,8 +11,8 @@ type Service interface {
 	RegisterUser(input RegisterUserInput) (User, error)
 	Login(input LoginInput) (User, error)
 	IsEmailAvailable(input CheckEmailInput) (bool, error)
-	SaveAvatar(ID int, fileLocation string) (User, error)
-	GetUserByID(ID int) (User, error)
+	SaveAvatar(ID string, fileLocation string) (User, error)
+	GetUserByID(ID string) (User, error)
 }
 
 type service struct {
@@ -22,12 +23,13 @@ func NewService(repository Repository) *service {
 	return &service{repository}
 }
 
-func(s *service) RegisterUser(input RegisterUserInput) (User, error) {
+func (s *service) RegisterUser(input RegisterUserInput) (User, error) {
 	user := User{}
+	user.ID = uuid.NewString()
 	user.Name = input.Name
 	user.Email = input.Email
 	user.Occupation = input.Occupation
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.MinCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 
 	if err != nil {
 		return user, err
@@ -44,7 +46,7 @@ func(s *service) RegisterUser(input RegisterUserInput) (User, error) {
 	return newUser, nil
 }
 
-func(s *service) Login(input LoginInput) (User, error) {
+func (s *service) Login(input LoginInput) (User, error) {
 	email := input.Email
 	password := input.Password
 
@@ -53,8 +55,8 @@ func(s *service) Login(input LoginInput) (User, error) {
 		return user, err
 	}
 
-	if user.ID == 0 {
-		return user, errors.New("User Tidak Ditemukan")
+	if user.ID == "" {
+		return user, errors.New("user not found")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
@@ -65,7 +67,7 @@ func(s *service) Login(input LoginInput) (User, error) {
 	return user, nil
 }
 
-func(s *service) IsEmailAvailable(input CheckEmailInput) (bool, error) {
+func (s *service) IsEmailAvailable(input CheckEmailInput) (bool, error) {
 	email := input.Email
 
 	user, err := s.repository.FindByEmail(email)
@@ -73,14 +75,14 @@ func(s *service) IsEmailAvailable(input CheckEmailInput) (bool, error) {
 		return false, err
 	}
 
-	if user.ID == 0 {
+	if user.ID == "" {
 		return true, nil
 	}
 
 	return false, nil
 }
 
-func(s *service) SaveAvatar(ID int, fileLocation string) (User, error) {
+func (s *service) SaveAvatar(ID string, fileLocation string) (User, error) {
 	user, err := s.repository.FindByID(ID)
 	if err != nil {
 		return user, err
@@ -97,14 +99,14 @@ func(s *service) SaveAvatar(ID int, fileLocation string) (User, error) {
 	return updatedUser, nil
 }
 
-func(s *service) GetUserByID(ID int) (User, error) {
+func (s *service) GetUserByID(ID string) (User, error) {
 	user, err := s.repository.FindByID(ID)
 	if err != nil {
 		return user, err
 	}
 
-	if user.ID == 0 {
-		return user, errors.New("User Tidak Ditemukan")
+	if user.ID == "" {
+		return user, errors.New("user not found")
 	}
 
 	return user, nil

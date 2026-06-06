@@ -1,5 +1,5 @@
 CREATE TABLE users (
-   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+   id VARCHAR(36) NOT NULL PRIMARY KEY,
    name VARCHAR(255) NULL,
    occupation VARCHAR(255) NULL,
    email VARCHAR(255) NULL,
@@ -7,6 +7,6 @@ CREATE TABLE users (
    avatar_file_name VARCHAR(255) NULL,
    role VARCHAR(255) NULL,
    token VARCHAR(255) NULL,
-   created_at DATETIME NULL,
-   updated_at DATETIME NULL
+   created_at TIMESTAMP NULL,
+   updated_at TIMESTAMP NULL
 );

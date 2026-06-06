@@ -1,6 +1,6 @@
 CREATE TABLE campaigns (
-   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-   user_id INT NULL,
+   id VARCHAR(36) NOT NULL PRIMARY KEY,
+   user_id VARCHAR(36) NULL,
    name VARCHAR(255) NULL,
    short_description VARCHAR(255) NULL,
    description TEXT NULL,
@@ -9,6 +9,6 @@ CREATE TABLE campaigns (
    goal_amount INT NULL,
    current_amount INT NULL,
    slug VARCHAR(255) NULL,
-   created_at DATETIME NULL,
-   updated_at DATETIME NULL
+   created_at TIMESTAMP NULL,
+   updated_at TIMESTAMP NULL
 );

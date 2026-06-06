@@ -7,9 +7,9 @@ import (
 )
 
 type Transaction struct {
-	ID         int    `json:"id"`
-	CampaignID int    `json:"campaign_id"`
-	UserID     int    `json:"user_id"`
+	ID         string `json:"id" gorm:"type:char(36);primaryKey"`
+	CampaignID string `json:"campaign_id" gorm:"type:char(36)"`
+	UserID     string `json:"user_id" gorm:"type:char(36)"`
 	Amount     int    `json:"amount"`
 	Status     string `json:"status"`
 	Code       string `json:"code"`

@@ -1,12 +1,9 @@
 package transaction
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 type CampaignTransactionFormatter struct {
-	ID        int       `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Amount    int       `json:"amount"`
 	CreatedAt time.Time `json:"created_at"`
@@ -38,7 +35,7 @@ func FormatCampaignTransactions(transactions []Transaction) []CampaignTransactio
 }
 
 type UserTransactionFormatter struct {
-	ID        int               `json:"id"`
+	ID        string            `json:"id"`
 	Amount    int               `json:"amount"`
 	Status    string            `json:"status"`
 	CreatedAt time.Time         `json:"created_at"`
@@ -59,9 +56,7 @@ func FormatUserTransaction(transaction Transaction) UserTransactionFormatter {
 	formatter.CreatedAt = transaction.CreatedAt
 
 	campaignFormatter := CampaignFormatter{}
-	fmt.Println(campaignFormatter)
 	campaignFormatter.Name = transaction.Campaign.Name
-	fmt.Println(transaction.Campaign.Name)
 	campaignFormatter.ImageURL = ""
 
 	if len(transaction.Campaign.CampaignImages) > 0 {
@@ -89,9 +84,9 @@ func FormatUserTransactions(transactions []Transaction) []UserTransactionFormatt
 }
 
 type TransactionFormatter struct {
-	ID         int    `json:"id"`
-	CampaignID int    `json:"campaign_id"`
-	UserID     int    `json:"user_id"`
+	ID         string `json:"id"`
+	CampaignID string `json:"campaign_id"`
+	UserID     string `json:"user_id"`
 	Amount     int    `json:"amount"`
 	Code       string `json:"code"`
 	Status     string `json:"status"`
