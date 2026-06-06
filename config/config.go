@@ -21,6 +21,7 @@ type DatabaseConfig struct {
 	User     string
 	Password string
 	Name     string
+	SSLMode  string
 }
 
 type JWTConfig struct {
@@ -60,13 +61,16 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		AppPort: getEnv("APP_PORT", "8080"),
+		// Cloud Run (and similar platforms) inject the port via PORT; fall back
+		// to APP_PORT for local runs.
+		AppPort: getEnv("PORT", getEnv("APP_PORT", "8080")),
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "127.0.0.1"),
 			Port:     getEnv("DB_PORT", "5432"),
 			User:     getEnv("DB_USER", "postgres"),
 			Password: getEnv("DB_PASSWORD", ""),
 			Name:     getEnv("DB_NAME", "crowdfunding"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		JWT: JWTConfig{
 			SecretKey: os.Getenv("JWT_SECRET_KEY"),
@@ -94,8 +98,8 @@ func Load() (*Config, error) {
 // DSN returns the PostgreSQL connection string consumed by GORM.
 func (d DatabaseConfig) DSN() string {
 	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable TimeZone=UTC",
-		d.Host, d.Port, d.User, d.Password, d.Name,
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s TimeZone=UTC",
+		d.Host, d.Port, d.User, d.Password, d.Name, d.SSLMode,
 	)
 }
 
