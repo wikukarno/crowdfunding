@@ -1,0 +1,350 @@
+basePath: /api/v1
+definitions:
+  campaign.CreateCampaignInput:
+    properties:
+      description:
+        type: string
+      goal_amount:
+        type: integer
+      name:
+        type: string
+      perks:
+        type: string
+      short_description:
+        type: string
+    required:
+    - description
+    - goal_amount
+    - name
+    - perks
+    - short_description
+    type: object
+  helper.Meta:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  helper.Response:
+    properties:
+      data: {}
+      meta:
+        $ref: '#/definitions/helper.Meta'
+    type: object
+  transaction.CreateTransactionInput:
+    properties:
+      amount:
+        type: integer
+      campaign_id:
+        type: string
+    required:
+    - amount
+    - campaign_id
+    type: object
+  transaction.TransactionNotificationInput:
+    properties:
+      fraud_status:
+        type: string
+      order_id:
+        type: string
+      payment_type:
+        type: string
+      transaction_status:
+        type: string
+    type: object
+  user.CheckEmailInput:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  user.LoginInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  user.RegisterUserInput:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      occupation:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - name
+    - occupation
+    - password
+    type: object
+info:
+  contact: {}
+  description: REST API for crowdfunding campaigns and donations.
+  license:
+    name: MIT
+  title: Crowdfunding API
+  version: "1.0"
+paths:
+  /avatars:
+    post:
+      parameters:
+      - description: Avatar image
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: Upload the current user's avatar
+      tags:
+      - users
+  /campaign-images:
+    post:
+      parameters:
+      - description: Campaign id
+        in: formData
+        name: campaign_id
+        required: true
+        type: string
+      - description: Mark as primary image
+        in: formData
+        name: is_primary
+        type: boolean
+      - description: Image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: Upload a campaign image
+      tags:
+      - campaigns
+  /campaigns:
+    get:
+      parameters:
+      - description: Filter by owner user id
+        in: query
+        name: user_id
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: List campaigns, optionally filtered by user
+      tags:
+      - campaigns
+    post:
+      parameters:
+      - description: Campaign details
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/campaign.CreateCampaignInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a campaign
+      tags:
+      - campaigns
+  /campaigns/{id}:
+    get:
+      parameters:
+      - description: Campaign id
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Get campaign detail by id
+      tags:
+      - campaigns
+    put:
+      parameters:
+      - description: Campaign id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated details
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/campaign.CreateCampaignInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: Update a campaign
+      tags:
+      - campaigns
+  /campaigns/{id}/transactions:
+    get:
+      parameters:
+      - description: Campaign id
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: List transactions of a campaign
+      tags:
+      - transactions
+  /email_checkers:
+    post:
+      parameters:
+      - description: Email to check
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/user.CheckEmailInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Check whether an email is still available
+      tags:
+      - users
+  /sessions:
+    post:
+      parameters:
+      - description: Login credentials
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Authenticate and receive a JWT
+      tags:
+      - users
+  /transactions:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: List the current user's transactions
+      tags:
+      - transactions
+    post:
+      parameters:
+      - description: Transaction details
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/transaction.CreateTransactionInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a donation transaction
+      tags:
+      - transactions
+  /transactions/notification:
+    post:
+      parameters:
+      - description: Notification payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/transaction.TransactionNotificationInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/transaction.TransactionNotificationInput'
+      summary: Midtrans payment notification webhook
+      tags:
+      - transactions
+  /users:
+    post:
+      parameters:
+      - description: Registration details
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/user.RegisterUserInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Register a new user
+      tags:
+      - users
+  /users/fetch:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.Response'
+      security:
+      - BearerAuth: []
+      summary: Fetch the current authenticated user
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and your JWT, e.g. "Bearer eyJhbGci..."
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
