@@ -97,6 +97,8 @@ when present).
 | `JWT_SECRET_KEY`      | Signing key for JWT (**required**)| —             |
 | `MIDTRANS_SERVER_KEY` | Midtrans server key               | —             |
 | `MIDTRANS_CLIENT_KEY` | Midtrans client key               | —             |
+| `MIDTRANS_ENABLED`    | Turn the live checkout on/off     | `false`       |
+| `SUPPORT_EMAIL`       | Contact shown when in demo mode   | `hi@wikukarno.dev` |
 | `R2_ACCOUNT_ID`       | Cloudflare R2 account id          | —             |
 | `R2_ACCESS_KEY_ID`    | R2 access key                     | —             |
 | `R2_SECRET_ACCESS_KEY`| R2 secret key                     | —             |
@@ -108,6 +110,17 @@ when present).
 Avatar and campaign images are uploaded to **Cloudflare R2** (S3-compatible)
 through the AWS SDK. When the `R2_*` variables are empty the app falls back to
 local disk under `./images` so development works without cloud credentials.
+
+### Payments (demo mode)
+
+The live Midtrans checkout is gated behind `MIDTRANS_ENABLED`. When it's off
+(the default), `POST /transactions` returns `503` and no pending row is written,
+so a public demo never creates real Snap tokens. `GET /config` reports the
+current state (and `SUPPORT_EMAIL`) so the web client can show a "contact
+support to enable a live demo" prompt instead — keeping the server flag as the
+single source of truth. As a safety net, `MidtransConfig.Available()` also stays
+in demo mode when the flag is on but the keys are missing, so a half-configured
+deploy can't advertise a checkout that would fail.
 
 ## API
 
@@ -121,6 +134,7 @@ header.
 | Method | Endpoint                       | Auth | Description                       |
 | ------ | ------------------------------ | :--: | --------------------------------- |
 | GET    | `/health`                      |      | Health check                      |
+| GET    | `/config`                      |      | Public client config (payments on/off, support email) |
 | POST   | `/users`                       |      | Register a user                   |
 | POST   | `/sessions`                    |      | Login                             |
 | POST   | `/email_checkers`              |      | Check email availability          |

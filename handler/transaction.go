@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"backend-crowdfunding/helper"
+	"backend-crowdfunding/payment"
 	"backend-crowdfunding/transaction"
 	"backend-crowdfunding/user"
 
@@ -87,6 +89,14 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 
 	newTransaction, err := h.service.CreateTransaction(input, currentUser)
 	if err != nil {
+		// Demo mode: payments are switched off. Tell the client clearly so it
+		// can surface its "contact support" prompt instead of a generic error.
+		if errors.Is(err, payment.ErrPaymentsDisabled) {
+			response := helper.APIResponse("Online payments are in demo mode. Contact support to enable a live demo.", http.StatusServiceUnavailable, "error", nil)
+			c.JSON(http.StatusServiceUnavailable, response)
+			return
+		}
+
 		c.Error(err)
 		response := helper.APIResponse("Failed to create transaction", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)

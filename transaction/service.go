@@ -57,6 +57,12 @@ func (s *service) GetTransactionsByUserID(userID string) ([]Transaction, error) 
 }
 
 func (s *service) CreateTransaction(input CreateTransactionInput, currentUser user.User) (Transaction, error) {
+	// Bail out before writing a pending row when payments are in demo mode, so
+	// we don't accumulate orphaned transactions that can never be paid.
+	if !s.paymentService.Enabled() {
+		return Transaction{}, payment.ErrPaymentsDisabled
+	}
+
 	transaction := Transaction{}
 	transaction.ID = uuid.NewString()
 	transaction.Amount = input.Amount

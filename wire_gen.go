@@ -47,7 +47,7 @@ func InitializeApp() (*App, error) {
 	gormTxRunner := transaction.NewTxRunner(db, transactionRepository, campaignRepository)
 	transactionService := transaction.NewService(transactionRepository, campaignRepository, paymentService, gormTxRunner)
 	transactionHandler := handler.NewTransactionHandler(transactionService)
-	engine := newRouter(userHandler, campaignHandler, transactionHandler, authService, service)
+	engine := newRouter(configConfig, userHandler, campaignHandler, transactionHandler, authService, service)
 	app := newApp(engine, configConfig)
 	return app, nil
 }

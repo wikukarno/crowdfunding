@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,9 @@ type Config struct {
 	JWT      JWTConfig
 	Midtrans MidtransConfig
 	Storage  StorageConfig
+	// SupportEmail is surfaced to the web app so visitors can request access to
+	// features that are gated behind demo mode (e.g. live payments).
+	SupportEmail string
 }
 
 type DatabaseConfig struct {
@@ -31,6 +35,18 @@ type JWTConfig struct {
 type MidtransConfig struct {
 	ServerKey string
 	ClientKey string
+	// Enabled is the explicit MIDTRANS_ENABLED toggle. It only turns the live
+	// checkout on; whether it's actually usable also depends on the keys below
+	// (see Available).
+	Enabled bool
+}
+
+// Available reports whether the live Midtrans checkout should be attempted. It
+// requires the explicit MIDTRANS_ENABLED flag AND both keys, so flipping the
+// flag on without credentials can't ship a broken checkout — the app stays in
+// demo mode instead.
+func (m MidtransConfig) Available() bool {
+	return m.Enabled && m.ServerKey != "" && m.ClientKey != ""
 }
 
 // StorageConfig points at a Cloudflare R2 bucket (S3-compatible). When the
@@ -78,6 +94,7 @@ func Load() (*Config, error) {
 		Midtrans: MidtransConfig{
 			ServerKey: os.Getenv("MIDTRANS_SERVER_KEY"),
 			ClientKey: os.Getenv("MIDTRANS_CLIENT_KEY"),
+			Enabled:   getBoolEnv("MIDTRANS_ENABLED", false),
 		},
 		Storage: StorageConfig{
 			AccountID:       os.Getenv("R2_ACCOUNT_ID"),
@@ -86,6 +103,7 @@ func Load() (*Config, error) {
 			Bucket:          os.Getenv("R2_BUCKET"),
 			PublicURL:       os.Getenv("R2_PUBLIC_URL"),
 		},
+		SupportEmail: getEnv("SUPPORT_EMAIL", "hi@wikukarno.dev"),
 	}
 
 	if cfg.JWT.SecretKey == "" {
@@ -108,4 +126,20 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// getBoolEnv reads a boolean-ish env var. "1", "true", "yes", "on" (any case)
+// count as true; anything else falls back to the default when unset, or false
+// when set to something unrecognised.
+func getBoolEnv(key string, fallback bool) bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	if v == "" {
+		return fallback
+	}
+	switch v {
+	case "1", "true", "yes", "on", "y", "t":
+		return true
+	default:
+		return false
+	}
 }

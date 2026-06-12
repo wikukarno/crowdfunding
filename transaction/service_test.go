@@ -4,11 +4,26 @@ import (
 	"testing"
 
 	"backend-crowdfunding/campaign"
+	"backend-crowdfunding/payment"
+	"backend-crowdfunding/user"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+type mockPaymentService struct {
+	enabled bool
+	urlFn   func(payment.Transaction, user.User) (string, error)
+}
+
+func (m *mockPaymentService) Enabled() bool { return m.enabled }
+func (m *mockPaymentService) GetPaymentURL(tx payment.Transaction, u user.User) (string, error) {
+	if m.urlFn != nil {
+		return m.urlFn(tx, u)
+	}
+	return "https://pay.example/redirect", nil
+}
 
 // directRunner runs the unit of work against the mocks without a real database
 // transaction, which is all the service logic needs to be exercised.
@@ -61,6 +76,55 @@ func (m *mockCampaignRepository) MarkAllImagesAsNonPrimary(string) (bool, error)
 	return true, nil
 }
 func (m *mockCampaignRepository) WithTx(*gorm.DB) campaign.Repository { return m }
+
+func TestCreateTransactionDisabledDoesNotSave(t *testing.T) {
+	saveCalled := false
+	txRepo := &mockRepository{
+		saveFn: func(tx Transaction) (Transaction, error) {
+			saveCalled = true
+			return tx, nil
+		},
+	}
+	campaignRepo := &mockCampaignRepository{}
+	pay := &mockPaymentService{enabled: false}
+	service := NewService(txRepo, campaignRepo, pay, directRunner{txRepo, campaignRepo})
+
+	_, err := service.CreateTransaction(
+		CreateTransactionInput{Amount: 10000, CampaignID: "campaign-1"},
+		user.User{ID: "user-1"},
+	)
+
+	require.ErrorIs(t, err, payment.ErrPaymentsDisabled)
+	assert.False(t, saveCalled, "no transaction should be persisted while payments are disabled")
+}
+
+func TestCreateTransactionEnabledSavesPaymentURL(t *testing.T) {
+	var savedStatus string
+	txRepo := &mockRepository{
+		saveFn: func(tx Transaction) (Transaction, error) {
+			savedStatus = tx.Status
+			return tx, nil
+		},
+		updateFn: func(tx Transaction) (Transaction, error) { return tx, nil },
+	}
+	campaignRepo := &mockCampaignRepository{}
+	pay := &mockPaymentService{
+		enabled: true,
+		urlFn: func(payment.Transaction, user.User) (string, error) {
+			return "https://pay.example/redirect", nil
+		},
+	}
+	service := NewService(txRepo, campaignRepo, pay, directRunner{txRepo, campaignRepo})
+
+	tx, err := service.CreateTransaction(
+		CreateTransactionInput{Amount: 25000, CampaignID: "campaign-1"},
+		user.User{ID: "user-1"},
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, "pending", savedStatus)
+	assert.Equal(t, "https://pay.example/redirect", tx.PaymentURL)
+}
 
 func TestProcessPaymentMarksSettlementAsPaid(t *testing.T) {
 	var updatedCampaign campaign.Campaign

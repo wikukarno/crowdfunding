@@ -7,6 +7,7 @@ import (
 	"backend-crowdfunding/auth"
 	"backend-crowdfunding/config"
 	"backend-crowdfunding/handler"
+	"backend-crowdfunding/helper"
 	"backend-crowdfunding/payment"
 	"backend-crowdfunding/user"
 
@@ -32,10 +33,11 @@ func provideAuthService(cfg *config.Config) auth.Service {
 }
 
 func providePaymentService(cfg *config.Config) payment.Service {
-	return payment.NewService(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey)
+	return payment.NewService(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey, cfg.Midtrans.Available())
 }
 
 func newRouter(
+	cfg *config.Config,
 	userHandler *handler.UserHandler,
 	campaignHandler *handler.CampaignHandler,
 	transactionHandler *handler.TransactionHandler,
@@ -60,6 +62,17 @@ func newRouter(
 
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Public client configuration. The web app reads this to decide whether to
+	// run the live payment flow or show its "contact support" demo modal, so
+	// MIDTRANS_ENABLED on the server stays the single source of truth.
+	api.GET("/config", func(c *gin.Context) {
+		data := gin.H{
+			"payments_enabled": cfg.Midtrans.Available(),
+			"support_email":    cfg.SupportEmail,
+		}
+		c.JSON(http.StatusOK, helper.APIResponse("Client configuration", http.StatusOK, "success", data))
 	})
 
 	api.POST("/users", userHandler.RegisterUser)
