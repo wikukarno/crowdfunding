@@ -29,7 +29,7 @@ func (u *localUploader) Upload(_ context.Context, key string, body io.Reader, _ 
 	if err != nil {
 		return "", err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err := io.Copy(out, body); err != nil {
 		return "", err

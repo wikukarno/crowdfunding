@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// assertAnError is a sentinel used by handler tests that need the service layer
+// errServiceFailure is a sentinel used by handler tests that need the service layer
 // to fail without caring about the specific error.
-var assertAnError = errors.New("service failure")
+var errServiceFailure = errors.New("service failure")
 
 func protectedRouter(authService auth.Service, userService user.Service) *gin.Engine {
 	router := gin.New()

@@ -88,7 +88,7 @@ func TestRegisterUserRejectsInvalidPayload(t *testing.T) {
 func TestLoginHidesCredentialError(t *testing.T) {
 	userService := &fakeUserService{
 		loginFn: func(user.LoginInput) (user.User, error) {
-			return user.User{}, assertAnError
+			return user.User{}, errServiceFailure
 		},
 	}
 	h := NewUserHandler(userService, auth.NewService("secret"), nil)
@@ -101,5 +101,5 @@ func TestLoginHidesCredentialError(t *testing.T) {
 
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	assert.Contains(t, rec.Body.String(), "invalid email or password")
-	assert.NotContains(t, rec.Body.String(), assertAnError.Error())
+	assert.NotContains(t, rec.Body.String(), errServiceFailure.Error())
 }

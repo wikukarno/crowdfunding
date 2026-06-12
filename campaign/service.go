@@ -80,7 +80,7 @@ func (s *service) UpdateCampaign(InputID GetCampaignDetailInput, inputData Creat
 	}
 
 	if campaign.UserID != userID {
-		return campaign, errors.New("Not an owner of the campaign")
+		return campaign, errors.New("not an owner of the campaign")
 	}
 
 	campaign.Name = inputData.Name
@@ -105,7 +105,7 @@ func (s *service) SaveCampaignImage(input CreateCampaignImageInput, fileLocation
 	}
 
 	if campaign.UserID != userID {
-		return CampaignImage{}, errors.New("Not an owner of the campaign")
+		return CampaignImage{}, errors.New("not an owner of the campaign")
 	}
 
 	isPrimary := 0

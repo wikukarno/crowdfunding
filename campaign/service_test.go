@@ -99,5 +99,5 @@ func TestUpdateCampaignRejectsNonOwner(t *testing.T) {
 		"other",
 	)
 
-	assert.EqualError(t, err, "Not an owner of the campaign")
+	assert.EqualError(t, err, "not an owner of the campaign")
 }

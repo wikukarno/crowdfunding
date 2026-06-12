@@ -39,7 +39,7 @@ func (h *UserHandler) RegisterUser(c *gin.Context) {
 
 	newUser, err := h.userService.RegisterUser(input)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		response := helper.APIResponse("Register account failed", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -76,7 +76,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	if err != nil {
 		// Keep the client message generic so we don't reveal whether the email
 		// exists or what the password check returned, but log the real cause.
-		c.Error(err)
+		_ = c.Error(err)
 		errorMessage := gin.H{"errors": "invalid email or password"}
 		response := helper.APIResponse("Login failed", http.StatusUnprocessableEntity, "error", errorMessage)
 		c.JSON(http.StatusUnprocessableEntity, response)
@@ -153,12 +153,12 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-	defer opened.Close()
+	defer func() { _ = opened.Close() }()
 
 	key := objectKey(fmt.Sprintf("avatars/%s", userID), file.Filename)
 	url, err := h.uploader.Upload(c.Request.Context(), key, opened, file.Size, file.Header.Get("Content-Type"))
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Failed to upload avatar image", http.StatusBadRequest, "error", data)
 		c.JSON(http.StatusBadRequest, response)
@@ -166,7 +166,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	}
 
 	if _, err := h.userService.SaveAvatar(userID, url); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		data := gin.H{"is_uploaded": false}
 		response := helper.APIResponse("Failed to upload avatar image", http.StatusBadRequest, "error", data)
 		c.JSON(http.StatusBadRequest, response)

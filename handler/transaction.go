@@ -39,7 +39,7 @@ func (h *TransactionHandler) GetCampaignTransactions(c *gin.Context) {
 
 	transactions, err := h.service.GetTransactionByCampaignID(input, currentUser.ID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		response := helper.APIResponse("Failed to get campaign's transactions", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -59,7 +59,7 @@ func (h *TransactionHandler) GetUserTransactions(c *gin.Context) {
 
 	transactions, err := h.service.GetTransactionsByUserID(currentUser.ID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		response := helper.APIResponse("Failed to get user's transactions", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -97,7 +97,7 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 			return
 		}
 
-		c.Error(err)
+		_ = c.Error(err)
 		response := helper.APIResponse("Failed to create transaction", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -122,7 +122,7 @@ func (h *TransactionHandler) GetNotification(c *gin.Context) {
 	}
 
 	if err := h.service.ProcessPayment(input); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		response := helper.APIResponse("Failed to process notification", http.StatusBadRequest, "error", nil)
 		c.JSON(http.StatusBadRequest, response)
 		return
